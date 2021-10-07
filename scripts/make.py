@@ -419,6 +419,7 @@ class ToolchainBuild:
         build_dir = os.path.join(self.cfg.build_dir, lib_name,
                                  lib_spec.name)
         self.runner.reset_cwd()
+        self._prepare_build_dir(build_dir)
         self._cmake_configure(full_name,
                               os.path.join(self.cfg.llvm_repo_dir,
                                            lib_name),
