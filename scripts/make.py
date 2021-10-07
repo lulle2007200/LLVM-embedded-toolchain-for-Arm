@@ -404,7 +404,7 @@ class ToolchainBuild:
             'LIBUNWIND_ENABLE_THREADS:BOOL': 'OFF',
             'LIBUNWIND_USE_COMPILER_RT:BOOL': 'ON',
             'LIBUNWIND_IS_BAREMETAL:BOOL': 'ON',
-            'LIBUNWIND_REMEMBER_HEAP_ALLOC:BOOL': 'ON',
+            #'LIBUNWIND_REMEMBER_HEAP_ALLOC:BOOL': 'ON',
             'LIBUNWIND_TARGET_TRIPLE:STRING': lib_spec.target
         }
         cmake_common_defs = self._get_common_cmake_defs_for_libs(lib_spec)
