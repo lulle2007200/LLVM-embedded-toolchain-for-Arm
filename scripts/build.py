@@ -160,6 +160,8 @@ def parse_args_to_config() -> Config:
                              '  all - perform all of the above\n'
                              '  test - run tests\n'
                              'Default: all')
+    parser.add_argument('--enable-exceptions', help='enable exceptions',
+                        action='store_true')
     args = parser.parse_args()
     return config.Config(args)
 

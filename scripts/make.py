@@ -392,13 +392,45 @@ class ToolchainBuild:
             '-rc', dummy_unwind,
         ])
 
+    def _updated_dict(self, dict1, dict2):
+        result = dict1.copy()
+        result.update(dict2)
+        return result
+
+    def _build_libunwind(self, lib_spec: config.LibrarySpec) -> None:
+        cmake_libunwind_defs = {
+            'LIBUNWIND_ENABLE_ASSERTIONS:BOOL': 'OFF',
+            'LIBUNWIND_ENABLE_STATIC:BOOL': 'ON',
+            'LIBUNWIND_ENABLE_THREADS:BOOL': 'OFF',
+            'LIBUNWIND_USE_COMPILER_RT:BOOL': 'ON',
+            'LIBUNWIND_IS_BAREMETAL:BOOL': 'ON',
+            'LIBUNWIND_REMEMBER_HEAP_ALLOC:BOOL': 'ON',
+            'LIBUNWIND_TARGET_TRIPLE:STRING': lib_spec.target
+        }
+        cmake_common_defs = self._get_common_cmake_defs_for_libs(lib_spec)
+        install_dir = os.path.join(self.cfg.target_llvm_rt_dir,
+                                   lib_spec.name)
+        cmake_common_defs.update({
+            'CMAKE_BUILD_TYPE:STRING': 'MinSizeRel',
+            'CMAKE_INSTALL_PREFIX': install_dir,
+        })
+        lib_name = 'libunwind'
+        full_name = '{} for {}'.format(lib_name, lib_spec.name)
+        build_dir = os.path.join(self.cfg.build_dir, lib_name,
+                                 lib_spec.name)
+        self.runner.reset_cwd()
+        self._cmake_configure(full_name,
+                              os.path.join(self.cfg.llvm_repo_dir,
+                                           lib_name),
+                              build_dir,
+                              self._updated_dict(cmake_common_defs,
+                                                 cmake_libunwind_defs))
+        logging.info('Building and installing %s', lib_name)
+        self._cmake_build(build_dir)
+        self._cmake_build(build_dir, target='install')
+
     def build_cxx_libraries(self, lib_spec: config.LibrarySpec) -> None:
         """Build and install a single variant of lib++abi and libc++"""
-
-        def updated_dict(dict1, dict2):
-            result = dict1.copy()
-            result.update(dict2)
-            return result
 
         cmake_common_defs = self._get_common_cmake_defs_for_libs(lib_spec)
         # Disable C++17 aligned allocation feature because its implementation
@@ -464,13 +496,16 @@ class ToolchainBuild:
                                   os.path.join(self.cfg.llvm_repo_dir,
                                                lib_name),
                                   build_dir,
-                                  updated_dict(cmake_common_defs,
-                                               cmake_defs))
+                                  self._updated_dict(cmake_common_defs,
+                                                     cmake_defs))
             logging.info('Building and installing %s', full_name)
             self._cmake_build(build_dir)
             self._cmake_build(build_dir, target='install')
 
-        self._create_dummy_libunwind(lib_spec)
+        if self.cfg.enable_exceptions:
+            self._build_libunwind
+        else:
+            self._create_dummy_libunwind(lib_spec)
 
     def _copy_runtime_to_native(self, lib_spec: config.LibrarySpec) -> None:
         """Copy runtime libraries and headers from target LLVM to

@@ -310,6 +310,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.skip_checks = args.skip_checks
         self.verbose = args.verbose
         self.num_threads = args.parallel
+        self.enable_exceptions = args.enable_exceptions
 
     @property
     def copy_runtime_dlls(self) -> bool:
