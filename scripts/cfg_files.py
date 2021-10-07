@@ -47,9 +47,14 @@ def write_cfg_files(cfg: config.Config, lib_spec: config.LibrarySpec) -> None:
         '--target={}'.format(target),
         lib_spec.flags,
         '-fuse-ld=lld',
-        '-fno-exceptions -fno-rtti',
         '--sysroot $@/../lib/clang-runtimes/{}'.format(lib_spec.name)
     ]
+
+    if not cfg.enable_exceptions:
+        base_cfg_lines.append('-fno-exceptions')
+
+    if not cfg.enable_rtti:
+        base_cfg_lines.append('-fno-rtti')
 
     # No semihosting and no linker script
     nosys_lines = base_cfg_lines + [

@@ -491,6 +491,12 @@ class ToolchainBuild:
                 'LIBCXX_USE_LLVM_UNWINDER:BOOL': 'ON',
             })
 
+        if self.cfg.enable_rtti:
+            cmake_libcxx_defs.update({
+                'LIBCXX_SUPPORTS_GR_FLAG:BOOL': 'ON',
+                'LIBCXX_ENABLE_RTTI:BOOL': 'ON',
+            })
+
         libs = [
             ('libc++', 'libcxx', cmake_libcxx_defs),
             ('libc++abi', 'libcxxabi', cmake_libcxxabi_defs),

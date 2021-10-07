@@ -162,6 +162,8 @@ def parse_args_to_config() -> Config:
                              'Default: all')
     parser.add_argument('--enable-exceptions', help='enable exceptions',
                         action='store_true')
+    parser.add_argument('--enable-rtti', help='enable rtti',
+                         action='store_true')
     args = parser.parse_args()
     return config.Config(args)
 
