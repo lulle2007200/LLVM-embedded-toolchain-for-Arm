@@ -503,7 +503,7 @@ class ToolchainBuild:
             self._cmake_build(build_dir, target='install')
 
         if self.cfg.enable_exceptions:
-            self._build_libunwind
+            self._build_libunwind(lib_spec)
         else:
             self._create_dummy_libunwind(lib_spec)
 
