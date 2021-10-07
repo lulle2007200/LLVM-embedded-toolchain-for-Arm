@@ -481,6 +481,16 @@ class ToolchainBuild:
             'LIBCXX_CXX_ABI:STRING': 'libcxxabi',
         }
 
+        if self.cfg.enable_exceptions:
+            cmake_libcxxabi_defs.update({
+                'LIBCXXABI_ENABLE_EXCEPTIONS:BOOL': 'ON',
+                'LIBCXXABI_USE_LLVM_UNWINDER:BOOL': 'ON',
+            })
+            cmake_libcxx_defs.update({
+                'LIBCXX_ENABLE_EXCEPTIONS:BOOL': 'ON',
+                'LIBCXX_USE_LLVM_UNWINDER:BOOL': 'ON',
+            })
+
         libs = [
             ('libc++', 'libcxx', cmake_libcxx_defs),
             ('libc++abi', 'libcxxabi', cmake_libcxxabi_defs),
