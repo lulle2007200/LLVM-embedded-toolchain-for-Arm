@@ -143,7 +143,7 @@ def _check_toolchain(cfg: config.Config, toolchain: config.Toolchain,
     if not check_compiler_executable(toolchain.cpp_compiler):
         return False
 
-    if toolchain.kind == config.ToolchainKind.CLANG:
+    if toolchain.kind == config.ToolchainKind.CLANG  or toolchain.kind == config.ToolchainKind.CLANG_CL:
         ver = _parse_clang_version(toolchain.c_compiler)
         min_ver = MIN_CLANG_VERSION
     else:
@@ -197,9 +197,12 @@ def check_prerequisites(cfg: config.Config) -> None:
     if cfg.use_ccache:
         is_ok = is_ok and _check_tool(cfg, 'ccache', 'CCache',
                                       MIN_CCACHE_VERSION)
-    if cfg.use_ninja:
-        is_ok = is_ok and _check_availability('ninja', 'Ninja')
-    for tool in ['git', 'make', 'find', 'sort', 'tar', 'sed']:
+    if cfg.build_system == config.BuildSystem.NINJA:
+        is_ok = is_ok and _check_availability(cfg.build_system.option_name)
+    tools = ['git', 'tar']
+    if not config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+        tools.extend(['make', 'find', 'sort', 'sed'])
+    for tool in tools:
         is_ok = is_ok and _check_availability(tool)
     if not is_ok:
         logging.error('Prerequisites check failed')

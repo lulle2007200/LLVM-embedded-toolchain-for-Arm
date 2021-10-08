@@ -230,6 +230,10 @@ class ToolchainBuild:
             'LLVM_ENABLE_PROJECTS:STRING': ';'.join(projects),
             'LLVM_DISTRIBUTION_COMPONENTS:STRING': ';'.join(dist_comps),
         })
+        if config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+            cmake_defs.update({
+                'LLVM_USE_LINKER:STRING': 'lld-link'
+            })
         if cfg.is_cross_compiling:
             native_tools_dir = join(cfg.native_llvm_build_dir, 'bin')
             cmake_defs['CMAKE_CROSSCOMPILING:BOOL'] = 'ON'

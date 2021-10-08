@@ -71,15 +71,24 @@ def parse_args_to_config() -> Config:
                         help='path to directory containing LLVM and newlib '
                              'repositories (default: ./repos-<revision>)')
     default_toolchain = config.ToolchainKind.CLANG.value
+    default_toolchain_dir = '/usr/bin'
+    host_toolchain_choices = util.values_of_enum(config.ToolchainKind)
+    if config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+        default_toolchain_dir = 'C:\\Program Files\\llvm\\bin'
+        host_toolcahin_choices = [config.ToolchainKind.CLANG_CL.value]
+        default_toolchain = config.ToolchainKind.CLANG_CL.value
+
+
     parser.add_argument('--host-toolchain', type=str,
-                        choices=util.values_of_enum(config.ToolchainKind),
+                        choices=host_toolchain_choices,
                         default=default_toolchain,
                         help='host toolchain type '
                              '(default: {})'.format(default_toolchain))
     parser.add_argument('--host-toolchain-dir', type=str, metavar='PATH',
-                        default='/usr/bin',
+                        default=default_toolchain_dir,
                         help='path to the directory containing the host '
-                             'compiler binary (default: /usr/bin)')
+                             'compiler binary '
+                             '(default: {})'.format(default_toolchain_dir))
     native_toolchain_kinds = [
         config.ToolchainKind.CLANG.value,
         config.ToolchainKind.GCC.value,
@@ -96,10 +105,15 @@ def parse_args_to_config() -> Config:
     parser.add_argument('--skip-checks',
                         help='skip checks of build prerequisites',
                         action='store_true')
-    parser.add_argument('--use-ninja',
-                        help='use Ninja instead of GNU Make when building '
-                             'LLVM components',
-                        action='store_true')
+    buildsystem_choices = util.values_of_enum(config.BuildSystem)
+    default_build_system = config.BuildSystem.MAKE.option_name
+    if config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+        default_build_system = config.BuildSystem.NINJA.option_name
+        buildsystem_choices = [config.BuildSystem.NINJA.option_name]
+    parser.add_argument('--build-system', type=str,
+                        choices=buildsystem_choices,
+                        default=default_build_system,
+                        help='build system to use (default: make)')
     parser.add_argument('--use-ccache',
                         help='use CCache when building Clang (requires '
                              'CCache v. {} or '
@@ -143,23 +157,36 @@ def parse_args_to_config() -> Config:
                         help='number of parallel threads to use in Make/Ninja '
                         '(default: number of CPUs, {})'.format(cpu_count),
                         default=cpu_count)
+    action_choices = util.values_of_enum(Action);
+    action_help = ('actions to perform, a list of:\n'
+                   '  prepare - check out and patch sources\n'
+                   '  clang - build and install Clang, lld and '
+                   'other binary utilities\n'
+                   '  newlib - build and install newlib for each '
+                   'target\n'
+                   '  compiler-rt - build and install compiler-rt '
+                   'for each target\n'
+                   '  libcxx - build and install libc++abi and '
+                   'libc++ for each target\n'
+                   '  configure - write target configuration files\n'
+                   '  package - create tarball\n'
+                   '  all - perform all of the above\n'
+                   '  test - run tests\n'
+                   'Default: all')
+    if config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+        action_choices = [config.Action.PREPARE.value,
+                          config.Action.CLANG.value,
+                          config.Action.PACKAGE.value,
+                          config.Action.ALL.value]
+        action_help = ('actions to perform, a list of:\n'
+                       '  prepare - check out and patch sources\n'
+                       '  clang - build and install Clang, lld and '
+                       'other binary utilities\n'
+                       '  package - create tarball\n'
+                       '  all - perform all of the above\n')
     parser.add_argument('actions', nargs=argparse.REMAINDER,
-                        choices=util.values_of_enum(Action),
-                        help='actions to perform, a list of:\n'
-                             '  prepare - check out and patch sources\n'
-                             '  clang - build and install Clang, lld and '
-                             'other binary utilities\n'
-                             '  newlib - build and install newlib for each '
-                             'target\n'
-                             '  compiler-rt - build and install compiler-rt '
-                             'for each target\n'
-                             '  libcxx - build and install libc++abi and '
-                             'libc++ for each target\n'
-                             '  configure - write target configuration files\n'
-                             '  package - create tarball\n'
-                             '  all - perform all of the above\n'
-                             '  test - run tests\n'
-                             'Default: all')
+                        choices=action_choices,
+                        help=action_help)
     parser.add_argument('--enable-exceptions', help='enable exceptions',
                         action='store_true')
     parser.add_argument('--enable-rtti', help='enable rtti',
@@ -246,20 +273,21 @@ def build_all(cfg: Config) -> None:
         logging.info('Building library variants and/or configurations: %s',
                      ', '.join(v.name for v in cfg.variants))
 
-    for lib_spec in cfg.variants:
-        run_or_skip(cfg, Action.NEWLIB,
-                    functools.partial(builder.build_newlib, lib_spec),
-                    'newlib build for {}'.format(lib_spec.name))
-        run_or_skip(cfg, Action.COMPILER_RT,
-                    functools.partial(builder.build_compiler_rt, lib_spec),
-                    'compiler-rt build for {}'.format(lib_spec.name))
-        run_or_skip(cfg, Action.LIBCXX,
-                    functools.partial(builder.build_cxx_libraries, lib_spec),
-                    'libc++/libc++abi build for {}'.format(lib_spec.name))
-        run_or_skip(cfg, Action.CONFIGURE,
-                    functools.partial(cfg_files.configure_target, cfg,
-                                      lib_spec),
-                    'generation of config files for {}'.format(lib_spec.name))
+    if config.HOST_PLATFORM != config.HostPlatform.WINDOWS:
+        for lib_spec in cfg.variants:
+            run_or_skip(cfg, Action.NEWLIB,
+                        functools.partial(builder.build_newlib, lib_spec),
+                        'newlib build for {}'.format(lib_spec.name))
+            run_or_skip(cfg, Action.COMPILER_RT,
+                        functools.partial(builder.build_compiler_rt, lib_spec),
+                        'compiler-rt build for {}'.format(lib_spec.name))
+            run_or_skip(cfg, Action.LIBCXX,
+                        functools.partial(builder.build_cxx_libraries, lib_spec),
+                        'libc++/libc++abi build for {}'.format(lib_spec.name))
+            run_or_skip(cfg, Action.CONFIGURE,
+                        functools.partial(cfg_files.configure_target, cfg,
+                                          lib_spec),
+                        'generation of config files for {}'.format(lib_spec.name))
 
 
 def run_tests(cfg: Config) -> None:

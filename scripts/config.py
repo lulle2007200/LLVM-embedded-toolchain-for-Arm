@@ -18,6 +18,7 @@ import datetime
 import enum
 import logging
 import os
+import platform
 from typing import Optional, Set, TYPE_CHECKING
 
 import execution
@@ -46,6 +47,15 @@ class BuildMode(enum.Enum):
     RECONFIGURE = 'reconfigure'
     INCREMENTAL = 'incremental'
 
+    
+@enum.unique
+class HostPlatform(enum.Enum):
+    WINDOWS = 'Windows'
+    LINUX = 'Linux'
+    MAC = 'Darwin'
+
+HOST_PLATFORM = HostPlatform(platform.system())
+
 
 if TYPE_CHECKING:
     class EnumValueStub:  # pylint: disable=too-few-public-methods
@@ -53,6 +63,14 @@ if TYPE_CHECKING:
            enumeration
         """
         value = ''
+
+    class BuildSystem:
+        def __init__(self, name: str):
+            self.option_name = name
+        cmake_gen_name = ''
+        option_name = ''
+        MAKE = EnumValueStub()
+        NINJA = EnumValueStub()
 
     class ToolchainKind:  # pylint: disable=too-few-public-methods
         """Stub class for the type checker, replaces ToolchainKind"""
@@ -64,6 +82,7 @@ if TYPE_CHECKING:
         c_compiler = ''
         cpp_compiler = ''
         CLANG = EnumValueStub()
+        CLANG_CL = EnumValueStub()
         GCC = EnumValueStub()
         MINGW = EnumValueStub()
 else:
@@ -72,6 +91,8 @@ else:
         """Enumeration for the --host-toolchain and --native-toolchain
            options.
         """
+
+        CLANG_CL = ('clang-cl', 'Clang CL', None, 'clang-cl', 'clang-cl')
         CLANG = ('clang', 'Clang', None, 'clang', 'clang++')
         GCC = ('gcc', 'GCC', None, 'gcc', 'g++')
         # MINGW is only supported with --host-toolchain
@@ -88,6 +109,21 @@ else:
             obj.host_triple = host_triple
             obj.c_compiler = c_compiler
             obj.cpp_compiler = cpp_compiler
+            if HOST_PLATFORM == HostPlatform.WINDOWS:
+                obj.c_compiler += '.exe'
+                obj.cpp_compiler += '.exe'
+            return obj
+
+    @enum.unique
+    class BuildSystem(enum.Enum):
+        MAKE = ('make', 'Unix Makefiles')
+        NINJA = ('ninja', 'Ninja')
+
+        def __new__(cls, option_name, cmake_gen_name):
+            obj = object.__new__(cls)
+            obj._value_ = option_name
+            obj.option_name = option_name
+            obj.cmake_gen_name = cmake_gen_name
             return obj
 
 
@@ -114,6 +150,7 @@ class Action(enum.Enum):
     ALL = 'all'
     # The 'test' phase is not part of 'all'
     TEST = 'test'
+
 
 
 class Toolchain:  # pylint: disable=too-few-public-methods
@@ -305,7 +342,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
             self.ask_copy_runtime = False
             self._copy_runtime_dlls = False
 
-        self.use_ninja = args.use_ninja
+        self.build_system = BuildSystem(args.build_system)
         self.use_ccache = args.use_ccache
         self.skip_checks = args.skip_checks
         self.verbose = args.verbose
@@ -332,7 +369,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.newlib_repo_dir = join(self.repos_dir, 'newlib.git')
         is_using_mingw = self.host_toolchain.kind == ToolchainKind.MINGW
         self.is_cross_compiling = (os.name == 'posix' and is_using_mingw)
-        self.cmake_generator = 'Ninja' if self.use_ninja else 'Unix Makefiles'
+        self.cmake_generator = self.build_system.cmake_gen_name
         self.release_mode = self.revision != 'HEAD'
         if self.release_mode:
             version_suffix = '-' + self.revision

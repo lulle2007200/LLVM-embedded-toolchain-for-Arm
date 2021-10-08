@@ -44,7 +44,13 @@ def package_toolchain(cfg: config.Config) -> None:
         '--owner=root',
         '--group=root',
     ]
-    if cfg.is_cross_compiling:
+    if config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+        args = [
+            'tar',
+            '-czf',
+            dest_bin
+        ]
+    if cfg.is_cross_compiling or config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
         # On Windows creating symlinks requires special access permissions
         # which by default are only granted to the Administrator user. Hence,
         # we dereference the symlinks when creating a tarball.
@@ -61,7 +67,10 @@ def package_toolchain(cfg: config.Config) -> None:
             args.append('--exclude={}'.format(item))
         args.append('--dereference')
     if cfg.verbose:
-        args.append('--verbose')
+        if not config.HOST_PLATFORM == config.HostPlatform.WINDOWS:
+            args.append('--verbose')
+        else:
+            args.append('-v')
     args.append(os.path.relpath(cfg.target_llvm_dir, cfg.install_dir))
     try:
         execution.run(args, cwd=cfg.install_dir, verbose=cfg.verbose)
