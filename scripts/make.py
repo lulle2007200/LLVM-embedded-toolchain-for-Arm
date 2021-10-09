@@ -501,6 +501,16 @@ class ToolchainBuild:
                 'LIBCXX_ENABLE_RTTI:BOOL': 'ON',
             })
 
+        if self.cfg.enable_localization:
+            cmake_libcxx_defs.update({
+                'LIBCXX_ENABLE_LOCALIZATION:BOOL': 'ON'
+            })
+
+        if self.cfg.enable_random_device:
+            cmake_libcxx_defs.update({
+                'LIBCXX_ENABLE_RANDOM_DEVICE:BOOL': 'ON'
+            })
+
         libs = [
             ('libc++', 'libcxx', cmake_libcxx_defs),
             ('libc++abi', 'libcxxabi', cmake_libcxxabi_defs),
@@ -633,6 +643,8 @@ class ToolchainBuild:
             '--disable-nls',
             '--enable-lite-exit',
         ]
+        if self.cfg.enable_multibyte:
+            configure_args.append('--enable-newlib-mb')
         make_args = [
             'make',
             '-j{}'.format(cfg.num_threads),

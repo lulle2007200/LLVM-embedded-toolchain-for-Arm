@@ -191,6 +191,15 @@ def parse_args_to_config() -> Config:
                         action='store_true')
     parser.add_argument('--enable-rtti', help='enable rtti',
                          action='store_true')
+    parser.add_argument('--enable-localization', 
+                        help='build libc++ with localization support',
+                        action='store_true')
+    parser.add_argument('--enable-multibyte',
+                        help='enable multibyte support in newlib',
+                        action='store_true')
+    parser.add_argument('--enable-random-device',
+                        help='enable std::random_device',
+                        action='store_true')
     args = parser.parse_args()
     return config.Config(args)
 
