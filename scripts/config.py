@@ -351,6 +351,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.enable_rtti = args.enable_rtti
         self.enable_multibyte = args.enable_multibyte
         self.enable_localization = args.enable_localization
+        self.enable_random_device = args.enable_random_device
 
     @property
     def copy_runtime_dlls(self) -> bool:
